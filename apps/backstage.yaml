@@ -18,7 +18,7 @@ spec:
           image:
             registry: ghcr.io
             repository: praveenbhatk8s/backstage
-            tag: sha-6fff011
+            tag: sha-71bc4ce
             pullPolicy: IfNotPresent
           initContainers:
             - name: wait-for-postgres
@@ -47,9 +47,17 @@ spec:
                   user: ${POSTGRES_USER}
                   password: ${POSTGRES_PASSWORD}
             auth:
+              environment: development
               providers:
                 guest:
                   dangerouslyAllowOutsideDevelopment: true
+                github:
+                  development:
+                    clientId: ${AUTH_GITHUB_CLIENT_ID}
+                    clientSecret: ${AUTH_GITHUB_CLIENT_SECRET}
+                    signIn:
+                      resolvers:
+                        - resolver: usernameMatchingUserEntityName
             catalog:
               locations:
                 - type: file
