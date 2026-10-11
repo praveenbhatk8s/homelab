@@ -12,6 +12,11 @@ spec:
     helm:
       valuesObject:
         backstage:
+          args:
+            - --config
+            - app-config.yaml
+            - --config
+            - app-config.production.yaml
           image:
             registry: docker.io
             repository: library/backstage
