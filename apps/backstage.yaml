@@ -15,8 +15,6 @@ spec:
           args:
             - --config
             - app-config.yaml
-            - --config
-            - app-config.production.yaml
           image:
             registry: docker.io
             repository: library/backstage
@@ -47,6 +45,18 @@ spec:
               providers:
                 guest:
                   dangerouslyAllowOutsideDevelopment: true
+            catalog:
+              locations:
+                - type: file
+                  target: ./examples/entities.yaml
+                - type: file
+                  target: ./examples/template/template.yaml
+                  rules:
+                    - allow: [Template]
+                - type: file
+                  target: ./examples/org.yaml
+                  rules:
+                    - allow: [User, Group]
         ingress:
           enabled: true
           className: traefik
