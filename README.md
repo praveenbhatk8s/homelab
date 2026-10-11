@@ -15,12 +15,25 @@ Secret values are kept in Vault, not in Git.
 | Storage | local-path (bundled with k3s) | Used by Postgres |
 | GitOps | Argo CD | Installed with Helm, app-of-apps pattern |
 | Database | PostgreSQL 17 | Plain StatefulSet, 2Gi volume |
-| Portal | Backstage | Official Helm chart, locally built image |
+| Portal | Backstage | Official Helm chart 2.10.2, locally built image |
+| Secrets manager | HashiCorp Vault | Chart 0.34.1, standalone, 1Gi volume, manual unseal |
+| Secrets sync | External Secrets Operator | Chart 2.12.0, logs in to Vault with Kubernetes auth |
 
 ## URLs
 
 - Backstage: http://backstage.localhost (guest sign-in)
 - Argo CD: http://argocd.localhost (user `admin`)
+- Vault: http://vault.localhost
+
+## How it fits together
+
+1. **Git is the source of truth.** `bootstrap/root.yaml` is applied once by hand. It points Argo CD at `apps/`.
+2. **Argo CD deploys everything in `apps/`.** Each file is one Application: Postgres, Backstage, Vault, External Secrets Operator and the secret store.
+3. **Secrets never enter Git.** Values are stored in Vault. An `ExternalSecret` in Git names the Vault path, and the operator creates the Kubernetes Secret from it.
+4. **Backstage reads its database login from that Secret** and waits for Postgres through an init container before starting.
+5. **Traefik routes `*.localhost` hostnames** to Backstage, Argo CD and Vault.
+
+Related repo: the Backstage app source is in `praveenbhatk8s/backstage`.
 
 ## Repository layout
 
@@ -113,7 +126,7 @@ Vault UI: http://vault.localhost
 
 ### 5. Backstage image
 
-The Backstage app source lives outside this repo. Build it and load it into the cluster:
+The Backstage app source lives in `praveenbhatk8s/backstage`. Clone it, then build it and load it into the cluster:
 
 ```bash
 yarn install
@@ -142,7 +155,17 @@ It adds one text file and changes no code. Keep it committed with the app.
 
 **Backstage stays `0/1` after a cluster start.**
 If Backstage starts before Postgres accepts connections, it fails with `ECONNREFUSED` and does not retry.
-Fix: `kubectl -n backstage rollout restart deploy/backstage`.
+Fixed with the `wait-for-postgres` init container in `apps/backstage.yaml`.
+Manual fallback: `kubectl -n backstage rollout restart deploy/backstage`.
+
+**`ClusterSecretStore` shows `InvalidProviderConfig`.**
+The operator cannot log in to Vault. Vault is sealed, or the Kubernetes auth setup in step 4 is incomplete.
+After fixing, force a re-check:
+`kubectl annotate clustersecretstore vault force-sync=$(date +%s) --overwrite`
+
+**Vault is sealed after a cluster restart.**
+Expected. Run `kubectl -n vault exec -it vault-0 -- vault operator unseal` with the saved unseal key.
+Existing Kubernetes Secrets keep working while Vault is sealed; only new syncs wait.
 
 **`Missing required config value at 'app.title'`.**
 The chart loads only its own config unless told otherwise.
@@ -155,12 +178,21 @@ That file is therefore not loaded. Its settings (URLs, database, catalog paths) 
 **`no available server` from Traefik.**
 The ingress exists but the Backstage pod is not ready. Check the pod and its logs.
 
+## Done so far
+
+- k3d cluster with Traefik on localhost.
+- Argo CD with an app-of-apps root Application.
+- Postgres and Backstage deployed through Git.
+- All Helm chart versions pinned.
+- Backstage waits for Postgres on startup.
+- Vault and External Secrets Operator; `postgres-credentials` now comes from Vault.
+- Backstage app in its own repo, including the `got` patch workaround.
+
 ## To do
 
-- Pin the Backstage chart version (currently `targetRevision: "*"`).
-- Add an init container so Backstage waits for Postgres.
+- Build the Backstage image in GitHub Actions and push it to GHCR, replacing `k3d image import`.
+- GitHub integration and sign-in for Backstage, with the token and OAuth secrets in Vault.
+- Kubernetes plugin in Backstage.
+- Argo CD plugin in Backstage.
+- A software template that scaffolds a service repo and its Argo CD Application.
 - Back up Vault data, or move to a hosted secrets manager, so secrets survive a cluster rebuild.
-- Put the Backstage app in its own repo and push images to GHCR instead of `k3d image import`.
-- Add the Argo CD and Kubernetes plugins to Backstage.
-- Add a software template that scaffolds a service repo and its Argo CD Application.
-- Replace guest sign-in with GitHub auth.
