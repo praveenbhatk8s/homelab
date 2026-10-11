@@ -18,7 +18,7 @@ spec:
           image:
             registry: ghcr.io
             repository: praveenbhatk8s/backstage
-            tag: sha256:d6fb2e36881981ea10ebbf2b455fa089e340ee992ba375e05ac30cc557b01f01
+            tag: sha-6fff011
             pullPolicy: IfNotPresent
           initContainers:
             - name: wait-for-postgres
