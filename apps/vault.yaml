@@ -1,0 +1,38 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: vault
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://helm.releases.hashicorp.com
+    chart: vault
+    targetRevision: "*"   # pin once it works
+    helm:
+      valuesObject:
+        injector:
+          enabled: false
+        server:
+          standalone:
+            enabled: true
+          dataStorage:
+            enabled: true
+            size: 1Gi
+            storageClass: local-path
+          ingress:
+            enabled: true
+            ingressClassName: traefik
+            hosts:
+              - host: vault.localhost
+        ui:
+          enabled: true
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: vault
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

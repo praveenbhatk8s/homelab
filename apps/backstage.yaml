@@ -8,7 +8,7 @@ spec:
   source:
     repoURL: https://backstage.github.io/charts
     chart: backstage
-    targetRevision: "*"   # pin to a fixed chart version once it works
+    targetRevision: "2.10.2"   # pin to a fixed chart version once it works
     helm:
       valuesObject:
         backstage:
