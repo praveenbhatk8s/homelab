@@ -1,0 +1,18 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: backstage-rbac
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/praveenbhatk8s/homelab
+    targetRevision: main
+    path: manifests/backstage-rbac
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: backstage
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true

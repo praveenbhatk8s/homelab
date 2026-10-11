@@ -18,7 +18,7 @@ spec:
           image:
             registry: ghcr.io
             repository: praveenbhatk8s/backstage
-            tag: sha-71bc4ce
+            tag: sha-6ac5c28
             pullPolicy: IfNotPresent
           initContainers:
             - name: wait-for-postgres
@@ -70,10 +70,23 @@ spec:
                   target: ./examples/org.yaml
                   rules:
                     - allow: [User, Group]
+            kubernetes:
+              serviceLocatorMethod:
+                type: multiTenant
+              clusterLocatorMethods:
+                - type: config
+                  clusters:
+                    - name: homelab
+                      url: https://kubernetes.default.svc
+                      authProvider: serviceAccount
+                      caFile: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
         ingress:
           enabled: true
           className: traefik
           host: backstage.localhost
+        serviceAccount:
+          create: true
+          name: backstage
   destination:
     server: https://kubernetes.default.svc
     namespace: backstage
