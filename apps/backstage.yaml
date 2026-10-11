@@ -1,0 +1,57 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: backstage
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://backstage.github.io/charts
+    chart: backstage
+    targetRevision: "*"   # pin to a fixed chart version once it works
+    helm:
+      valuesObject:
+        backstage:
+          image:
+            registry: docker.io
+            repository: library/backstage
+            tag: dev
+            pullPolicy: IfNotPresent
+          extraEnvVarsSecrets:
+            - postgres-credentials
+          extraEnvVars:
+            - name: POSTGRES_HOST
+              value: postgres
+            - name: POSTGRES_PORT
+              value: "5432"
+          appConfig:
+            app:
+              baseUrl: http://backstage.localhost
+            backend:
+              baseUrl: http://backstage.localhost
+              cors:
+                origin: http://backstage.localhost
+              database:
+                client: pg
+                connection:
+                  host: ${POSTGRES_HOST}
+                  port: ${POSTGRES_PORT}
+                  user: ${POSTGRES_USER}
+                  password: ${POSTGRES_PASSWORD}
+            auth:
+              providers:
+                guest:
+                  dangerouslyAllowOutsideDevelopment: true
+        ingress:
+          enabled: true
+          className: traefik
+          host: backstage.localhost
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: backstage
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
