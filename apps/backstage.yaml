@@ -18,7 +18,7 @@ spec:
           image:
             registry: ghcr.io
             repository: praveenbhatk8s/backstage
-            tag: sha-6ac5c28
+            tag: sha-f617282
             pullPolicy: IfNotPresent
           initContainers:
             - name: wait-for-postgres
@@ -27,6 +27,7 @@ spec:
           extraEnvVarsSecrets:
             - postgres-credentials
             - backstage-github
+            - backstage-argocd
           extraEnvVars:
             - name: POSTGRES_HOST
               value: postgres
@@ -80,6 +81,14 @@ spec:
                       url: https://kubernetes.default.svc
                       authProvider: serviceAccount
                       caFile: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+            argocd:
+              localDevelopment: true
+              appLocatorMethods:
+                - type: config
+                  instances:
+                    - name: homelab
+                      url: http://argocd-server.argocd.svc
+                      token: ${ARGOCD_AUTH_TOKEN}
         ingress:
           enabled: true
           className: traefik
