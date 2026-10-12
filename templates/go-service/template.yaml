@@ -1,0 +1,97 @@
+apiVersion: scaffolder.backstage.io/v1beta3
+kind: Template
+metadata:
+  name: go-service
+  title: Go service on the homelab
+  description: Creates a Go HTTP service with a GHCR build, and opens a pull request that deploys it through Argo CD.
+  tags:
+    - go
+    - gitops
+spec:
+  owner: group:default/guests
+  type: service
+
+  parameters:
+    - title: Service details
+      required:
+        - name
+        - description
+        - owner
+      properties:
+        name:
+          title: Name
+          type: string
+          description: Lowercase letters, digits and dashes. Used for the repo, namespace and hostname.
+          pattern: '^[a-z][a-z0-9-]{1,38}[a-z0-9]$'
+          ui:autofocus: true
+        description:
+          title: Description
+          type: string
+        owner:
+          title: Owner
+          type: string
+          ui:field: OwnerPicker
+          ui:options:
+            catalogFilter:
+              kind: [Group, User]
+
+  steps:
+    - id: service
+      name: Generate service
+      action: fetch:template
+      input:
+        url: ./skeleton
+        targetPath: ./service
+        copyWithoutTemplating:
+          - .github/workflows/*
+        values:
+          name: ${{ parameters.name }}
+          description: ${{ parameters.description }}
+          owner: ${{ parameters.owner }}
+
+    - id: publish
+      name: Create service repository
+      action: publish:github
+      input:
+        repoUrl: github.com?owner=praveenbhatk8s&repo=${{ parameters.name }}
+        description: ${{ parameters.description }}
+        sourcePath: ./service
+        defaultBranch: main
+        repoVisibility: public
+        protectDefaultBranch: false
+
+    - id: gitops
+      name: Generate deployment manifests
+      action: fetch:template
+      input:
+        url: ./gitops
+        targetPath: ./gitops
+        values:
+          name: ${{ parameters.name }}
+
+    - id: pr
+      name: Open pull request on homelab
+      action: publish:github:pull-request
+      input:
+        repoUrl: github.com?owner=praveenbhatk8s&repo=homelab
+        branchName: add-${{ parameters.name }}
+        title: Deploy ${{ parameters.name }}
+        description: Adds the Argo CD Application and manifests for ${{ parameters.name }}. Merge once the first image build is green.
+        sourcePath: ./gitops
+
+    - id: register
+      name: Register in catalog
+      action: catalog:register
+      input:
+        repoContentsUrl: ${{ steps['publish'].output.repoContentsUrl }}
+        catalogInfoPath: /catalog-info.yaml
+
+  output:
+    links:
+      - title: Service repository
+        url: ${{ steps['publish'].output.remoteUrl }}
+      - title: Deployment pull request
+        url: ${{ steps['pr'].output.remoteUrl }}
+      - title: Open in catalog
+        icon: catalog
+        entityRef: ${{ steps['register'].output.entityRef }}

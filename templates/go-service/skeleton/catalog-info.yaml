@@ -1,0 +1,18 @@
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: ${{ values.name }}
+  description: ${{ values.description | dump }}
+  annotations:
+    github.com/project-slug: praveenbhatk8s/${{ values.name }}
+    backstage.io/kubernetes-label-selector: 'app.kubernetes.io/name=${{ values.name }}'
+    backstage.io/kubernetes-namespace: ${{ values.name }}
+    argocd/app-name: ${{ values.name }}
+    argocd/instance-name: homelab
+  links:
+    - url: http://${{ values.name }}.localhost
+      title: Service URL
+spec:
+  type: service
+  lifecycle: experimental
+  owner: ${{ values.owner }}
