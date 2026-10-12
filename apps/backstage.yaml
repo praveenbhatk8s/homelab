@@ -71,6 +71,10 @@ spec:
                   target: ./examples/org.yaml
                   rules:
                     - allow: [User, Group]
+                - type: url
+                  target: https://github.com/praveenbhatk8s/homelab/blob/main/templates/go-service/template.yaml
+                  rules:
+                    - allow: [Template]
             kubernetes:
               serviceLocatorMethod:
                 type: multiTenant
