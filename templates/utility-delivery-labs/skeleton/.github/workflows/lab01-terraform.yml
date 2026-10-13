@@ -1,0 +1,104 @@
+# Lab 01 pipeline: the controlled-change flow from ADR-004.
+#   Pull request: format, validate, offline tests, security scan, and a plan per environment (if Azure is configured).
+#   Merge to main: nothing is applied automatically here. Apply is a separate, approved workflow per environment.
+
+name: lab01-terraform
+
+on:
+  pull_request:
+    paths:
+      - "labs/01-terraform-environments/**"
+      - ".github/workflows/lab01-terraform.yml"
+  push:
+    branches: [main]
+    paths:
+      - "labs/01-terraform-environments/**"
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    working-directory: labs/01-terraform-environments
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "~1.9"
+
+      - name: Format
+        run: make fmt-check
+
+      - name: Validate
+        run: make validate
+
+      - name: Offline tests (mock providers)
+        run: make test
+
+      # Soft-fail while you triage the findings (lab 01, exercise 5). Once each finding is either fixed
+      # or skipped with a written reason, remove --soft-fail so new findings block the merge.
+      - name: Security scan
+        run: |
+          pip install --quiet checkov
+          checkov --directory modules --framework terraform --quiet --compact --soft-fail
+
+  plan:
+    # Runs only when the repository has Azure OIDC set up (see README, "Optional: plan against Azure").
+    if: github.event_name == 'pull_request' && vars.AZURE_CLIENT_ID != ''
+    needs: checks
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+      pull-requests: write
+    strategy:
+      fail-fast: false
+      max-parallel: 1
+      matrix:
+        env: [dev, uat, staging, prod]
+    environment: plan-${{ matrix.env }}
+    env:
+      ARM_USE_OIDC: "true"
+      ARM_CLIENT_ID: ${{ vars.AZURE_CLIENT_ID }}
+      ARM_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
+      ARM_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+      TF_VAR_subscription_id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+      TF_VAR_tenant_id: ${{ vars.AZURE_TENANT_ID }}
+      TF_VAR_admin_group_object_ids: ${{ vars.ADMIN_GROUP_OBJECT_IDS }}
+      TF_VAR_db_admin: ${{ vars.DB_ADMIN }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "~1.9"
+
+      - name: Init
+        working-directory: labs/01-terraform-environments/envs/${{ matrix.env }}
+        run: |
+          terraform init -input=false \
+            -backend-config="resource_group_name=${{ vars.TFSTATE_RG }}" \
+            -backend-config="storage_account_name=${{ vars.TFSTATE_ACCOUNT }}" \
+            -backend-config="container_name=tfstate" \
+            -backend-config="key=meterflow/${{ matrix.env }}.tfstate" \
+            -backend-config="use_azuread_auth=true"
+
+      - name: Plan
+        working-directory: labs/01-terraform-environments/envs/${{ matrix.env }}
+        run: |
+          terraform plan -input=false -lock-timeout=5m -out=tfplan
+          terraform show -no-color tfplan > plan.txt
+
+      - name: Upload plan
+        uses: actions/upload-artifact@v4
+        with:
+          name: tfplan-${{ matrix.env }}
+          path: |
+            labs/01-terraform-environments/envs/${{ matrix.env }}/tfplan
+            labs/01-terraform-environments/envs/${{ matrix.env }}/plan.txt
+          retention-days: 7

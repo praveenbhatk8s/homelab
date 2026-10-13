@@ -1,0 +1,40 @@
+# Simulates the customer's corporate CA.
+#
+# In a real delivery, the customer issues an intermediate CA for the platform and you load it as a
+# Secret (tls.crt, tls.key, ca.crt) in the cert-manager namespace. Only the bootstrap below is lab-only.
+
+# 1. Lab-only: a self-signed issuer to create the "corporate root".
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: lab-selfsigned-bootstrap
+spec:
+  selfSigned: {}
+---
+# 2. Lab-only: the "corporate root CA" of Stadtwerke Talheim.
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: talheim-corporate-root
+  namespace: cert-manager
+spec:
+  isCA: true
+  commonName: Stadtwerke Talheim Corporate Root CA (lab)
+  secretName: talheim-corporate-root
+  duration: 87600h # 10 years
+  privateKey:
+    algorithm: ECDSA
+    size: 256
+  issuerRef:
+    kind: ClusterIssuer
+    name: lab-selfsigned-bootstrap
+---
+# 3. What the platform actually uses, in the lab and in a real delivery: a CA issuer backed by the
+#    customer's CA. Every workload certificate references this issuer.
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: talheim-corporate-ca
+spec:
+  ca:
+    secretName: talheim-corporate-root

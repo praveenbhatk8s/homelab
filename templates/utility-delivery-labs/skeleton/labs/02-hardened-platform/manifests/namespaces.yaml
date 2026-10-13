@@ -1,0 +1,33 @@
+# Every application namespace enforces the Kubernetes "restricted" Pod Security Standard.
+# This is the closest built-in match to OpenShift's restricted-v2 SCC (ADR-002).
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: meterflow
+  labels:
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/enforce-version: latest
+    pod-security.kubernetes.io/audit: restricted
+    pod-security.kubernetes.io/warn: restricted
+    meterflow.io/tenant: talheim
+---
+# Simulated concentrators. The role label is what the head-end's NetworkPolicy trusts.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: concentrators
+  labels:
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/enforce-version: latest
+    pod-security.kubernetes.io/audit: restricted
+    pod-security.kubernetes.io/warn: restricted
+    meterflow.io/role: concentrator
+    meterflow.io/tenant: talheim
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: monitoring
+  labels:
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/enforce-version: latest

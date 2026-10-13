@@ -1,0 +1,15 @@
+# Copy to terraform.tfvars for local use, or pass these through pipeline variables.
+subscription_id = "00000000-0000-0000-0000-000000000000"
+tenant_id       = "00000000-0000-0000-0000-000000000000"
+
+admin_group_object_ids = ["00000000-0000-0000-0000-000000000000"]
+
+db_admin = {
+  object_id      = "00000000-0000-0000-0000-000000000000"
+  principal_name = "sg-talheim-dba"
+  principal_type = "Group"
+}
+
+# hub_vnet_id         = "/subscriptions/.../virtualNetworks/vnet-talheim-hub"
+# firewall_private_ip = "10.40.0.4"
+name_suffix = "-a1b2"

@@ -1,0 +1,6 @@
+# Copy to backend.hcl and fill in. State lives in the customer's storage account, one key per environment.
+resource_group_name  = "rg-talheim-tfstate"
+storage_account_name = "sttalheimtfstate"
+container_name       = "tfstate"
+key                  = "meterflow/uat.tfstate"
+use_azuread_auth     = true

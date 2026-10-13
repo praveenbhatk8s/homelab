@@ -1,0 +1,83 @@
+openapi: 3.0.3
+info:
+  title: MeterFlow readings API
+  version: 0.1.0
+  description: |
+    Concentrators send batches of 15-minute meter readings to the head-end.
+    Duplicates are accepted idempotently, so a concentrator can safely resend after a timeout.
+    An HTTP 200 means the batch was processed; check `rejected` in the response for readings that were not stored.
+servers:
+  - url: https://meterflow.meterflow.svc:8080
+    description: Inside the cluster
+paths:
+  /v1/readings:
+    post:
+      summary: Submit a batch of readings
+      operationId: submitReadings
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Batch"
+            example:
+              concentrator: C001
+              readings:
+                - meter_id: M0000001
+                  interval_end: "2026-10-13T10:15:00Z"
+                  kwh: 0.231
+      responses:
+        "200":
+          description: Batch processed. Some readings may have been rejected.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Result"
+        "400":
+          description: The batch could not be parsed.
+        "503":
+          description: The head-end is draining for shutdown. Retry; another replica will take the batch.
+components:
+  schemas:
+    Batch:
+      type: object
+      required: [concentrator, readings]
+      additionalProperties: false
+      properties:
+        concentrator:
+          type: string
+          example: C001
+        readings:
+          type: array
+          items:
+            $ref: "#/components/schemas/Reading"
+    Reading:
+      type: object
+      required: [meter_id, interval_end, kwh]
+      additionalProperties: false
+      properties:
+        meter_id:
+          type: string
+          pattern: "^M[0-9]{7}$"
+          description: Registered meter ID.
+        interval_end:
+          type: string
+          format: date-time
+          description: End of the interval, on an interval boundary, in UTC.
+        kwh:
+          type: number
+          minimum: 0
+          maximum: 50
+          description: Consumption in the interval.
+    Result:
+      type: object
+      properties:
+        accepted:
+          type: integer
+          description: Readings stored for the first time.
+        duplicates:
+          type: integer
+          description: Readings already stored; accepted without change.
+        rejected:
+          type: integer
+          description: Readings that failed validation (unknown meter, misaligned, future, too old, implausible).

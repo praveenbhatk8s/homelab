@@ -1,0 +1,62 @@
+# Platform baseline: deny everything, then allow DNS. Applications add their own allows.
+# Owned by the platform, not by application charts, so an app cannot remove its own default-deny.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-all
+  namespace: meterflow
+spec:
+  podSelector: {}
+  policyTypes: ["Ingress", "Egress"]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-all
+  namespace: concentrators
+spec:
+  podSelector: {}
+  policyTypes: ["Ingress", "Egress"]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-dns
+  namespace: concentrators
+spec:
+  podSelector: {}
+  policyTypes: ["Egress"]
+  egress:
+    - to:
+        - namespaceSelector: {}
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - port: 53
+          protocol: UDP
+        - port: 53
+          protocol: TCP
+---
+# Concentrators may only talk to the head-end API.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-to-headend
+  namespace: concentrators
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: meter-sim
+  policyTypes: ["Egress"]
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: meterflow
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: meterflow
+      ports:
+        - port: 8080
+          protocol: TCP

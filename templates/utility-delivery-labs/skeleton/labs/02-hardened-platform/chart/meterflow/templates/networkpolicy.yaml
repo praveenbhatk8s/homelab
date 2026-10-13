@@ -1,0 +1,62 @@
+{{- if .Values.networkPolicy.enabled }}
+# App-specific allows. The platform applies default-deny to the namespace (manifests/netpol-defaults.yaml);
+# these rules open exactly the flows in the connectivity matrix, rows 14, 16 and 17.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "meterflow.name" . }}
+  labels:
+    {{- include "meterflow.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "meterflow.selectorLabels" . | nindent 6 }}
+  policyTypes: ["Ingress", "Egress"]
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              {{- toYaml .Values.networkPolicy.ingressFromNamespaceLabels | nindent 14 }}
+      ports:
+        - port: 8080
+          protocol: TCP
+    {{- if eq .Values.expose.type "gateway" }}
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: {{ .Values.expose.gateway.namespace }}
+      ports:
+        - port: 8080
+          protocol: TCP
+    {{- end }}
+    {{- if eq .Values.expose.type "route" }}
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              policy-group.network.openshift.io/ingress: ""
+      ports:
+        - port: 8080
+          protocol: TCP
+    {{- end }}
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              {{- toYaml .Values.networkPolicy.metricsFromNamespaceLabels | nindent 14 }}
+      ports:
+        - port: 9090
+          protocol: TCP
+  egress:
+    - to:
+        - namespaceSelector: {}
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - port: 53
+          protocol: UDP
+        - port: 53
+          protocol: TCP
+    {{- with .Values.networkPolicy.extraEgress }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+{{- end }}

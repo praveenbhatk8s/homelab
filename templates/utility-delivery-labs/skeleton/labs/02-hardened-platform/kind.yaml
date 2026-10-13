@@ -1,0 +1,10 @@
+# Local cluster: one control plane and three workers, labelled as three zones by scripts/00-cluster.sh,
+# so topology spread and zone-failure drills behave like a three-zone AKS cluster.
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+name: talheim
+nodes:
+  - role: control-plane
+  - role: worker
+  - role: worker
+  - role: worker

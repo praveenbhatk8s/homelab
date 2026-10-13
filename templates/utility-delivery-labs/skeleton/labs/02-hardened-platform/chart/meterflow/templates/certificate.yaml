@@ -1,0 +1,30 @@
+{{- if .Values.tls.enabled }}
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: {{ include "meterflow.name" . }}
+  labels:
+    {{- include "meterflow.labels" . | nindent 4 }}
+spec:
+  secretName: {{ include "meterflow.name" . }}-tls
+  issuerRef:
+    {{- toYaml .Values.tls.issuerRef | nindent 4 }}
+  duration: {{ .Values.tls.duration }}
+  renewBefore: {{ .Values.tls.renewBefore }}
+  privateKey:
+    algorithm: ECDSA
+    size: 256
+    rotationPolicy: Always
+  usages:
+    - server auth
+  dnsNames:
+    - {{ include "meterflow.name" . }}
+    - {{ include "meterflow.name" . }}.{{ .Release.Namespace }}.svc
+    - {{ include "meterflow.name" . }}.{{ .Release.Namespace }}.svc.cluster.local
+    {{- if ne .Values.expose.type "none" }}
+    - {{ .Values.expose.host }}
+    {{- end }}
+    {{- range .Values.tls.extraDnsNames }}
+    - {{ . }}
+    {{- end }}
+{{- end }}

@@ -1,0 +1,109 @@
+apiVersion: backstage.io/v1alpha1
+kind: System
+metadata:
+  name: ${{ values.system }}
+  title: Utility platform delivery labs
+  description: Smart-metering platform for the fictional utility Stadtwerke Talheim, delivered end to end.
+  annotations:
+    github.com/project-slug: ${{ values.repoSlug }}
+spec:
+  owner: ${{ values.owner }}
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: ${{ values.name }}
+  title: Delivery labs repository
+  description: ${{ values.description }}
+  annotations:
+    github.com/project-slug: ${{ values.repoSlug }}
+  links:
+    - url: https://github.com/${{ values.repoSlug }}/tree/main/labs/00-approved-architecture
+      title: Lab 00 - Approved architecture
+      icon: docs
+    - url: https://github.com/${{ values.repoSlug }}/tree/main/labs/01-terraform-environments
+      title: Lab 01 - Terraform environments
+      icon: docs
+    - url: https://github.com/${{ values.repoSlug }}/tree/main/labs/02-hardened-platform
+      title: Lab 02 - Hardened platform
+      icon: docs
+    - url: https://github.com/${{ values.repoSlug }}/tree/main/labs/09-escalation-drills
+      title: Lab 09 - Escalation drills
+      icon: docs
+    - url: https://github.com/${{ values.repoSlug }}/tree/main/speaking
+      title: Speaking track
+      icon: docs
+  tags:
+    - terraform
+    - kubernetes
+    - openshift
+    - azure
+spec:
+  type: documentation
+  lifecycle: experimental
+  owner: ${{ values.owner }}
+  system: ${{ values.system }}
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: meterflow
+  title: MeterFlow head-end
+  description: Receives 15-minute meter readings from concentrators, validates and deduplicates them, and exposes completeness metrics.
+  annotations:
+    github.com/project-slug: ${{ values.repoSlug }}
+    backstage.io/source-location: url:https://github.com/${{ values.repoSlug }}/tree/main/apps/meterflow
+  tags:
+    - go
+spec:
+  type: service
+  lifecycle: experimental
+  owner: ${{ values.owner }}
+  system: ${{ values.system }}
+  providesApis:
+    - meterflow-readings
+  dependsOn:
+    - resource:talheim-aks
+    - resource:talheim-postgres
+---
+apiVersion: backstage.io/v1alpha1
+kind: API
+metadata:
+  name: meterflow-readings
+  title: MeterFlow readings API
+  description: Batches of meter readings from concentrators to the head-end.
+spec:
+  type: openapi
+  lifecycle: experimental
+  owner: ${{ values.owner }}
+  system: ${{ values.system }}
+  definition:
+    $text: ./apps/meterflow/api/openapi.yaml
+---
+apiVersion: backstage.io/v1alpha1
+kind: Resource
+metadata:
+  name: talheim-aks
+  title: AKS cluster (per environment)
+  description: Private AKS cluster across three zones, defined in labs/01-terraform-environments/modules/aks.
+  links:
+    - url: https://github.com/${{ values.repoSlug }}/tree/main/labs/01-terraform-environments/modules/aks
+      title: Terraform module
+spec:
+  type: kubernetes-cluster
+  owner: ${{ values.owner }}
+  system: ${{ values.system }}
+---
+apiVersion: backstage.io/v1alpha1
+kind: Resource
+metadata:
+  name: talheim-postgres
+  title: PostgreSQL Flexible Server (per environment)
+  description: Private, Entra ID-only PostgreSQL with zone-redundant HA in staging and prod, defined in labs/01-terraform-environments/modules/postgres.
+  links:
+    - url: https://github.com/${{ values.repoSlug }}/tree/main/labs/01-terraform-environments/modules/postgres
+      title: Terraform module
+spec:
+  type: database
+  owner: ${{ values.owner }}
+  system: ${{ values.system }}

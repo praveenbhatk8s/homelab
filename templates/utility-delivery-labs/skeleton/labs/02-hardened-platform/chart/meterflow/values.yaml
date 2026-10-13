@@ -1,0 +1,68 @@
+image:
+  repository: meterflow
+  tag: "0.1.0"
+  pullPolicy: IfNotPresent
+
+replicaCount: 3
+
+# Head-end settings (see apps/meterflow/README.md)
+meterflow:
+  meterCount: 1000
+  interval: 15m
+  maxAge: 48h
+  drainDelay: 5s
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 64Mi
+  # Memory limit protects the node. No CPU limit: throttling a latency-sensitive ingest path
+  # does more harm than good when requests are set correctly.
+  limits:
+    memory: 256Mi
+
+# TLS from the customer's CA through cert-manager (ADR in lab 00: all certificates chain to the corporate CA).
+tls:
+  enabled: true
+  issuerRef:
+    kind: ClusterIssuer
+    name: talheim-corporate-ca
+  duration: 2160h      # 90 days
+  renewBefore: 720h    # renew 30 days before expiry
+  extraDnsNames: []
+
+# Spread replicas across zones so one zone failure leaves two running.
+topologySpread:
+  enabled: true
+  zoneKey: topology.kubernetes.io/zone
+
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 2
+
+networkPolicy:
+  enabled: true
+  # Namespaces allowed to send readings: concentrator gateways carry this label.
+  ingressFromNamespaceLabels:
+    meterflow.io/role: concentrator
+  # Namespace allowed to scrape metrics.
+  metricsFromNamespaceLabels:
+    kubernetes.io/metadata.name: monitoring
+  # Extra egress, for example the database in lab 06. DNS is always allowed.
+  extraEgress: []
+
+# How the head-end is exposed outside the cluster.
+#   none     only inside the cluster (the local lab)
+#   route    OpenShift Route with TLS passthrough (the app terminates TLS itself)
+#   gateway  Gateway API TLSRoute with passthrough
+expose:
+  type: none
+  host: meterflow.talheim.example
+  gateway:
+    name: meter-gateway
+    namespace: gateway
+    sectionName: tls-passthrough
+
+podAnnotations: {}
+nodeSelector: {}
+tolerations: []

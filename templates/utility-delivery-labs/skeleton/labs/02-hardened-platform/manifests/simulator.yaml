@@ -1,0 +1,63 @@
+# Simulated concentrators sending readings to the head-end over TLS, verifying it against the
+# customer CA. The CA bundle ConfigMap (talheim-ca) is created by scripts/02-deploy.sh.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: meter-sim
+  namespace: concentrators
+  labels:
+    app.kubernetes.io/name: meter-sim
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: meter-sim
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: meter-sim
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: meter-sim
+          image: meterflow:0.1.0
+          imagePullPolicy: IfNotPresent
+          command: ["/usr/local/bin/meter-sim"]
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          env:
+            - name: TARGET
+              value: https://meterflow.meterflow.svc:8080/v1/readings
+            - name: METERS
+              value: "1000"
+            - name: CONCENTRATORS
+              value: "10"
+            # Must match the head-end's interval (scripts/02-deploy.sh sets both).
+            - name: INTERVAL
+              value: 10s
+            - name: CA_FILE
+              value: /etc/talheim-ca/ca.crt
+          ports:
+            - name: metrics
+              containerPort: 9091
+          resources:
+            requests:
+              cpu: 50m
+              memory: 32Mi
+            limits:
+              memory: 256Mi
+          volumeMounts:
+            - name: ca
+              mountPath: /etc/talheim-ca
+              readOnly: true
+      volumes:
+        - name: ca
+          configMap:
+            name: talheim-ca

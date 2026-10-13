@@ -1,0 +1,38 @@
+{{- if eq .Values.expose.type "route" }}
+# OpenShift: the head-end terminates TLS with the customer-CA certificate, so the router passes
+# the connection through untouched. Meters then see the same certificate on AKS and OpenShift.
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: {{ include "meterflow.name" . }}
+  labels:
+    {{- include "meterflow.labels" . | nindent 4 }}
+spec:
+  host: {{ .Values.expose.host }}
+  to:
+    kind: Service
+    name: {{ include "meterflow.name" . }}
+  port:
+    targetPort: api
+  tls:
+    termination: passthrough
+{{- else if eq .Values.expose.type "gateway" }}
+# Kubernetes Gateway API: TLS passthrough routed by SNI, the same pattern on AKS.
+apiVersion: gateway.networking.k8s.io/v1alpha2
+kind: TLSRoute
+metadata:
+  name: {{ include "meterflow.name" . }}
+  labels:
+    {{- include "meterflow.labels" . | nindent 4 }}
+spec:
+  parentRefs:
+    - name: {{ .Values.expose.gateway.name }}
+      namespace: {{ .Values.expose.gateway.namespace }}
+      sectionName: {{ .Values.expose.gateway.sectionName }}
+  hostnames:
+    - {{ .Values.expose.host }}
+  rules:
+    - backendRefs:
+        - name: {{ include "meterflow.name" . }}
+          port: 8080
+{{- end }}

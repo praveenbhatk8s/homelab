@@ -1,0 +1,71 @@
+# Access maps to the customer's directory groups, never to individual users.
+# On AKS these group names are Entra ID group object IDs; on OpenShift they are synced LDAP groups.
+#
+#   talheim:operations  run the service after handover: read everything, logs, restart, scale
+#   talheim:delivery    the delivery team during the project: edit in the namespace
+#   talheim:auditors    read-only, no secrets
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: meterflow-operator
+  namespace: meterflow
+rules:
+  - apiGroups: [""]
+    resources: ["pods", "pods/log", "services", "endpoints", "events", "configmaps"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["apps"]
+    resources: ["deployments", "replicasets"]
+    verbs: ["get", "list", "watch"]
+  # Restart (kubectl rollout restart) and scale, nothing else.
+  - apiGroups: ["apps"]
+    resources: ["deployments"]
+    verbs: ["patch"]
+  - apiGroups: ["apps"]
+    resources: ["deployments/scale"]
+    verbs: ["get", "patch", "update"]
+  - apiGroups: ["cert-manager.io"]
+    resources: ["certificates", "certificaterequests"]
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: operations
+  namespace: meterflow
+subjects:
+  - kind: Group
+    name: talheim:operations
+    apiGroup: rbac.authorization.k8s.io
+roleRef:
+  kind: Role
+  name: meterflow-operator
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: delivery
+  namespace: meterflow
+subjects:
+  - kind: Group
+    name: talheim:delivery
+    apiGroup: rbac.authorization.k8s.io
+roleRef:
+  kind: ClusterRole
+  name: edit
+  apiGroup: rbac.authorization.k8s.io
+---
+# The built-in "view" role excludes Secrets, which is what auditors need.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: auditors
+  namespace: meterflow
+subjects:
+  - kind: Group
+    name: talheim:auditors
+    apiGroup: rbac.authorization.k8s.io
+roleRef:
+  kind: ClusterRole
+  name: view
+  apiGroup: rbac.authorization.k8s.io

@@ -1,0 +1,6 @@
+apiVersion: v2
+name: meterflow
+description: MeterFlow head-end for smart meter readings. Runs unchanged on Kubernetes and OpenShift.
+type: application
+version: 0.1.0
+appVersion: "0.1.0"

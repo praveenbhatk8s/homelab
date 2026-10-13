@@ -1,0 +1,31 @@
+# private interview notes
+PRIVATE-PREP.md
+
+# terraform
+**/.terraform/*
+*.tfstate
+*.tfstate.*
+crash.log
+*.tfplan
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+.terraform.tfstate.lock.info
+.terraform.lock.hcl
+**/envs/*/backend.hcl
+**/envs/*/terraform.tfvars
+
+# generated lab material
+labs/02-hardened-platform/out/
+*.pem
+*.key
+*.crt
+
+# go
+apps/meterflow/bin/
+
+# editors
+.DS_Store
+.idea/
+.vscode/

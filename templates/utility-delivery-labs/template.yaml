@@ -1,0 +1,124 @@
+apiVersion: scaffolder.backstage.io/v1beta3
+kind: Template
+metadata:
+  name: utility-delivery-labs
+  title: Utility platform delivery labs
+  description: >-
+    Creates the smart-metering delivery lab repository on GitHub (architecture, Terraform, hardened
+    Kubernetes/OpenShift platform, escalation drills, speaking track) and registers its system,
+    service, API and resources in the catalog.
+  tags:
+    - labs
+    - terraform
+    - kubernetes
+    - openshift
+    - azure
+spec:
+  # Change to your own user or group entity.
+  owner: user:default/praveenbhatk8s
+  type: documentation
+
+  parameters:
+    - title: Repository
+      required:
+        - repoUrl
+      properties:
+        repoUrl:
+          title: Repository location
+          type: string
+          ui:field: RepoUrlPicker
+          ui:options:
+            allowedHosts:
+              - github.com
+            # Remove or extend to allow other owners or organisations.
+            allowedOwners:
+              - praveenbhatk8s
+        description:
+          title: Description
+          type: string
+          default: Hands-on labs delivering a smart-metering platform for a utility, from approved architecture to handover.
+        visibility:
+          title: Visibility
+          type: string
+          enum:
+            - public
+            - private
+          default: public
+
+    - title: Catalog
+      required:
+        - owner
+      properties:
+        owner:
+          title: Owner
+          type: string
+          description: Who owns the repository in the catalog.
+          ui:field: OwnerPicker
+          ui:options:
+            catalogFilter:
+              kind:
+                - User
+                - Group
+        system:
+          title: System name
+          type: string
+          default: utility-delivery-labs
+          pattern: "^[a-z0-9-]+$"
+
+  steps:
+    # 1. The lab content, copied as-is. It contains Helm templates and GitHub Actions expressions,
+    #    which must not be run through the template engine.
+    - id: fetch-content
+      name: Fetch lab content
+      action: fetch:plain
+      input:
+        url: ./skeleton
+
+    # 2. The only templated file: the catalog descriptor.
+    - id: fetch-catalog
+      name: Render catalog descriptor
+      action: fetch:template
+      input:
+        url: ./templated
+        values:
+          name: ${{ (parameters.repoUrl | parseRepoUrl).repo }}
+          repoSlug: ${{ (parameters.repoUrl | parseRepoUrl).owner }}/${{ (parameters.repoUrl | parseRepoUrl).repo }}
+          owner: ${{ parameters.owner }}
+          system: ${{ parameters.system }}
+          description: ${{ parameters.description }}
+
+    - id: publish
+      name: Create GitHub repository
+      action: publish:github
+      input:
+        allowedHosts:
+          - github.com
+        repoUrl: ${{ parameters.repoUrl }}
+        description: ${{ parameters.description }}
+        repoVisibility: ${{ parameters.visibility }}
+        defaultBranch: main
+        gitCommitMessage: "Initial commit: utility platform delivery labs"
+        hasWiki: false
+        deleteBranchOnMerge: true
+        topics:
+          - platform-engineering
+          - terraform
+          - kubernetes
+          - openshift
+          - azure
+          - sre
+
+    - id: register
+      name: Register in catalog
+      action: catalog:register
+      input:
+        repoContentsUrl: ${{ steps['publish'].output.repoContentsUrl }}
+        catalogInfoPath: /catalog-info.yaml
+
+  output:
+    links:
+      - title: Repository
+        url: ${{ steps['publish'].output.remoteUrl }}
+      - title: Open in catalog
+        icon: catalog
+        entityRef: ${{ steps['register'].output.entityRef }}
