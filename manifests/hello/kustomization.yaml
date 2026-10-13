@@ -6,4 +6,5 @@ resources:
   - ingress.yaml
 images:
   - name: ghcr.io/praveenbhatk8s/hello
-    newTag: latest
+    newTag: sha-75b2c42
+    newName: ghcr.io/praveenbhatk8s/hello
