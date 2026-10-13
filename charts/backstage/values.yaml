@@ -6,8 +6,9 @@ backstage:
     - --config
     - app-config.yaml
     image:
-      registry: ghcr.io
-      repository: praveenbhatk8s/backstage
+      # Registry is part of the repository so Image Updater can manage the full image name.
+      registry: ""
+      repository: ghcr.io/praveenbhatk8s/backstage
       tag: sha-9d6b13c
       pullPolicy: IfNotPresent
     initContainers:

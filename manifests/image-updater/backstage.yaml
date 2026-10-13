@@ -1,0 +1,23 @@
+apiVersion: argocd-image-updater.argoproj.io/v1alpha1
+kind: ImageUpdater
+metadata:
+  name: backstage
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  applicationRefs:
+    - namePattern: backstage
+      images:
+        - alias: backstage
+          imageName: ghcr.io/praveenbhatk8s/backstage
+          commonUpdateSettings:
+            updateStrategy: newest-build
+            allowTags: "regexp:^sha-[0-9a-f]{7}$"
+            pullSecret: "secret:argocd/image-updater-creds#ghcr"
+          manifestTargets:
+            helm:
+              name: backstage.backstage.image.repository
+              tag: backstage.backstage.image.tag
+      writeBackConfig:
+        method: "git:secret:image-updater-creds"

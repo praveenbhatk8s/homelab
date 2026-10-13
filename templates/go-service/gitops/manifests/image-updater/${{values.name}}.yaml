@@ -1,0 +1,24 @@
+apiVersion: argocd-image-updater.argoproj.io/v1alpha1
+kind: ImageUpdater
+metadata:
+  name: ${{ values.name }}
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  applicationRefs:
+    - namePattern: ${{ values.name }}
+      images:
+        - alias: ${{ values.name }}
+          imageName: ghcr.io/praveenbhatk8s/${{ values.name }}
+          commonUpdateSettings:
+            updateStrategy: newest-build
+            allowTags: "regexp:^sha-[0-9a-f]{7}$"
+            pullSecret: "secret:argocd/image-updater-creds#ghcr"
+          manifestTargets:
+            kustomize:
+              name: ghcr.io/praveenbhatk8s/${{ values.name }}
+      writeBackConfig:
+        method: "git:secret:image-updater-creds"
+        gitConfig:
+          writeBackTarget: kustomization
