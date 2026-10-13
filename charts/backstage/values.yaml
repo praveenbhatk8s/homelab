@@ -1,0 +1,102 @@
+# Values for the official Backstage chart, nested under its dependency name.
+# Moved here unchanged from apps/backstage.yaml.
+backstage:
+  backstage:
+    args:
+    - --config
+    - app-config.yaml
+    image:
+      registry: ghcr.io
+      repository: praveenbhatk8s/backstage
+      tag: sha-9d6b13c
+      pullPolicy: IfNotPresent
+    initContainers:
+    - name: wait-for-postgres
+      image: postgres:17
+      command:
+      - sh
+      - -c
+      - until pg_isready -h postgres -p 5432; do sleep 2; done
+    extraEnvVarsSecrets:
+    - postgres-credentials
+    - backstage-github
+    - backstage-argocd
+    extraEnvVars:
+    - name: POSTGRES_HOST
+      value: postgres
+    - name: POSTGRES_PORT
+      value: "5432"
+    appConfig:
+      app:
+        baseUrl: http://backstage.localhost
+      backend:
+        baseUrl: http://backstage.localhost
+        cors:
+          origin: http://backstage.localhost
+        database:
+          client: pg
+          connection:
+            host: ${POSTGRES_HOST}
+            port: ${POSTGRES_PORT}
+            user: ${POSTGRES_USER}
+            password: ${POSTGRES_PASSWORD}
+      auth:
+        environment: development
+        providers:
+          github:
+            development:
+              clientId: ${AUTH_GITHUB_CLIENT_ID}
+              clientSecret: ${AUTH_GITHUB_CLIENT_SECRET}
+              signIn:
+                resolvers:
+                - resolver: usernameMatchingUserEntityName
+      catalog:
+        locations:
+        - type: file
+          target: ./examples/entities.yaml
+        - type: file
+          target: ./examples/template/template.yaml
+          rules:
+          - allow:
+            - Template
+        - type: file
+          target: ./examples/org.yaml
+          rules:
+          - allow:
+            - User
+            - Group
+        - type: url
+          target: https://github.com/praveenbhatk8s/homelab/blob/main/templates/go-service/template.yaml
+          rules:
+          - allow:
+            - Template
+        - type: url
+          target: https://github.com/praveenbhatk8s/homelab/blob/main/templates/utility-delivery-labs/template.yaml
+          rules:
+          - allow:
+            - Template
+      kubernetes:
+        serviceLocatorMethod:
+          type: multiTenant
+        clusterLocatorMethods:
+        - type: config
+          clusters:
+          - name: homelab
+            url: https://kubernetes.default.svc
+            authProvider: serviceAccount
+            caFile: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+      argocd:
+        localDevelopment: true
+        appLocatorMethods:
+        - type: config
+          instances:
+          - name: homelab
+            url: http://argocd-server.argocd.svc
+            token: ${ARGOCD_AUTH_TOKEN}
+  ingress:
+    enabled: true
+    className: traefik
+    host: backstage.localhost
+  serviceAccount:
+    create: true
+    name: backstage

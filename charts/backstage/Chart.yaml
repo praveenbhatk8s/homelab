@@ -1,0 +1,9 @@
+apiVersion: v2
+name: backstage
+description: Wrapper around the official Backstage chart, so its values live in this repo.
+type: application
+version: 0.1.0
+dependencies:
+  - name: backstage
+    version: 2.10.2
+    repository: https://backstage.github.io/charts
