@@ -1,0 +1,33 @@
+apiVersion: external-secrets.io/v1
+kind: ClusterExternalSecret
+metadata:
+  name: ghcr-pull
+  annotations:
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  externalSecretName: ghcr-pull
+  namespaceSelectors:
+    - matchLabels:
+        homelab/ghcr-pull: "true"
+  refreshTime: 1h
+  externalSecretSpec:
+    refreshInterval: 1h
+    secretStoreRef:
+      kind: ClusterSecretStore
+      name: vault
+    target:
+      name: ghcr-pull
+      template:
+        type: kubernetes.io/dockerconfigjson
+        engineVersion: v2
+        data:
+          .dockerconfigjson: '{"auths":{"ghcr.io":{"auth":"{{ printf "%s:%s" .username .token | b64enc }}"}}}'
+    data:
+      - secretKey: username
+        remoteRef:
+          key: ghcr/pull
+          property: GHCR_USERNAME
+      - secretKey: token
+        remoteRef:
+          key: ghcr/pull
+          property: GHCR_TOKEN

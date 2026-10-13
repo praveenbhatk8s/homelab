@@ -13,6 +13,9 @@ spec:
     server: https://kubernetes.default.svc
     namespace: hello
   syncPolicy:
+    managedNamespaceMetadata:
+      labels:
+        homelab/ghcr-pull: "true"
     automated:
       prune: true
       selfHeal: true
