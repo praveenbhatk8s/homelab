@@ -52,6 +52,7 @@ Related repos:
 
 ```
 bootstrap/root.yaml                      Root Application; the only manifest applied by hand
+scripts/homelab-up.sh                    Starts OrbStack and the cluster, unseals Vault, re-syncs secrets
 
 apps/argocd.yaml                         Argo CD itself (Helm chart), manual-prune, self-heal
 apps/argocd-image-updater.yaml           Argo CD Image Updater (Helm chart)
@@ -243,7 +244,14 @@ The package can stay private; the pull secret and Image Updater handle it.
 kubectl -n argocd annotate app root argocd.argoproj.io/refresh=hard --overwrite
 ```
 
-**After a cluster restart:** unseal Vault with `kubectl -n vault exec -it vault-0 -- vault operator unseal`.
+**Start the homelab after the Mac or OrbStack was stopped:**
+
+```bash
+./scripts/homelab-up.sh
+```
+
+It starts OrbStack and the k3d cluster, asks for the Vault unseal key if Vault is sealed, and re-syncs all secrets.
+The cluster lives in OrbStack: if Docker Desktop is also installed, make sure the `orbstack` Docker context is active, or k3d reports `No nodes found`.
 
 ## Backing up Vault (planned)
 
@@ -298,6 +306,13 @@ Manual fallback: `kubectl -n backstage rollout restart deploy/backstage`.
 The operator cannot log in to Vault. Vault is sealed, or the Kubernetes auth setup in step 5 is incomplete.
 After fixing, force a re-check:
 `kubectl annotate clustersecretstore vault force-sync=$(date +%s) --overwrite`
+
+**`k3d cluster start` reports `No nodes found`.**
+The active Docker context is not the runtime holding the cluster (for example Docker Desktop instead of OrbStack).
+Run `docker context use orbstack`, start OrbStack, and try again. Never run `k3d cluster create` to fix this; it makes a new, empty cluster.
+
+**`ExternalSecret` shows `SecretSyncedError` after a restart.**
+Left over from sync attempts while Vault was sealed. After unsealing, force a re-sync, or run `./scripts/homelab-up.sh`.
 
 **Vault is sealed after a cluster restart.**
 Expected. Unseal it with the saved key.
